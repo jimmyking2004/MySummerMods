@@ -69,6 +69,7 @@ namespace RailRoadCrossing
 		public override string Name => "Railroad crossing";
 		public override string Author => "Wampa842 / JimmyKing";
 		public override string Version => "2.0.0";
+		public override Game SupportedGames => Game.MySummerCar | Game.MyWinterCar;
 
 		static SettingsCheckBox Verbose;
         static SettingsCheckBox ShowTriggers;
