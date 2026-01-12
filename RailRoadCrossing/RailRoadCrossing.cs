@@ -1,4 +1,4 @@
-﻿/*
+/*
 Copyright (C) 2018 Wampa842
 
 This program is free software: you can redistribute it and/or modify
@@ -18,7 +18,6 @@ using System;
 using System.Linq;
 using MSCLoader;
 using UnityEngine;
-using HutongGames.PlayMaker;
 
 namespace RailRoadCrossing
 {
@@ -68,12 +67,16 @@ namespace RailRoadCrossing
 	{
 		public override string ID => "RailRoadCrossing";
 		public override string Name => "Railroad crossing";
-		public override string Author => "Wampa842";
-		public override string Version => "1.1.1";
-		public override bool UseAssetsFolder => true;
+		public override string Author => "Wampa842 / JimmyKing";
+		public override string Version => "2.0.0";
 
-		public Settings Verbose, EnableSound, EnableBarrier, ShowTriggers, Breakable, ApplySettings;
+		static SettingsCheckBox Verbose;
+        static SettingsCheckBox ShowTriggers;
 
+        static SettingsCheckBox EnableSound;
+        static SettingsCheckBox EnableBarrier;
+		static SettingsCheckBox Breakable;
+        
 		public GameObject Parent;
 		public GameObject[] Signs;
 		public Vector3[] SignPos => new Vector3[]
@@ -108,12 +111,7 @@ namespace RailRoadCrossing
 			CrossingTriggerBehaviour.Mod = this;
 
 			// Create settings
-			EnableSound = new Settings("EnableSound", "Enable sounds", true);
-			EnableBarrier = new Settings("EnableBarrier", "Use barrier", true);
-			Breakable = new Settings("BreakableBarrier", "Breakable barriers", true);
-			Verbose = new Settings("VerboseLogging", "[DEBUG] Verbose logging", false);
-			ShowTriggers = new Settings("ShowTriggers", "[DEBUG] Show triggers", false);
-			ApplySettings = new Settings("ApplySettings", "Apply settings", () => { _applyModSettings(); });
+			//ApplySettings = new Settings("ApplySettings", "Apply settings", () => { _applyModSettings(); });
 		}
 
 		private void _applyModSettings()
@@ -130,17 +128,24 @@ namespace RailRoadCrossing
 			}
 		}
 
-		public override void ModSettings()
+		public override void ModSetup()
 		{
-			Settings.AddCheckBox(this, Verbose);
-			Settings.AddCheckBox(this, ShowTriggers);
-			Settings.AddCheckBox(this, EnableSound);
-			Settings.AddCheckBox(this, EnableBarrier);
-			Settings.AddCheckBox(this, Breakable);
-			Settings.AddButton(this, ApplySettings, "MSCLoader settings are absolute bollocks.");
+			SetupFunction(Setup.OnLoad, Mod_OnLoad);
+			SetupFunction(Setup.ModSettings, Mod_Settings);
 		}
 
-		public override void OnLoad()
+		private void Mod_Settings()
+        {
+			// Create settings
+			Verbose = Settings.AddCheckBox("VerboseLogging", "[DEBUG] Verbose logging", false);
+            ShowTriggers = Settings.AddCheckBox("ShowTriggers", "[DEBUG] Show triggers", false);
+            EnableSound = Settings.AddCheckBox("EnableSound", "Enable sounds", true);
+            EnableBarrier = Settings.AddCheckBox("EnableBarrier", "Use barrier", true);
+			Breakable = Settings.AddCheckBox("BreakableBarrier", "Breakable barriers", true);
+			//Settings.AddButton(this, ApplySettings, "MSCLoader settings are absolute bollocks.");
+		}
+
+		 private void Mod_OnLoad()
 		{
 			// Hide the originals
 			foreach (var o in GameObject.FindObjectsOfType<GameObject>().Where(e => e.name == "sign_railroad"))
@@ -149,8 +154,8 @@ namespace RailRoadCrossing
 			}
 
 			// Load original
-			AssetBundle b = LoadAssets.LoadBundle(this, "railway_crossing.unity3d");
-			GameObject original = b.LoadAsset<GameObject>("railway_crossing.prefab");
+			AssetBundle ab = LoadAssets.LoadBundle("RailRoadCrossing.railway_crossing.unity3d");
+			GameObject original = ab.LoadAsset<GameObject>("railway_crossing.prefab");
 			original.transform.localScale = new Vector3(1.4f, 1.4f, 1.4f);
 
 			// Parent object
@@ -217,7 +222,7 @@ namespace RailRoadCrossing
 
 			// Unload assets
 			GameObject.Destroy(original);
-			b.Unload(false);
+			ab.Unload(false);
 		}
 	}
 }
