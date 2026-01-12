@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>RailRoadCrossing</RootNamespace>
     <AssemblyName>RailRoadCrossing</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
@@ -35,13 +35,13 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="cInput">
-      <HintPath>G:\Steam\steamapps\common\My Summer Car\mysummercar_Data\Managed\cInput.dll</HintPath>
+      <HintPath>D:\Programs\Steam\steamapps\common\My Winter Car\mywintercar_Data\Managed\cInput.dll</HintPath>
     </Reference>
     <Reference Include="MSCLoader">
-      <HintPath>G:\Steam\steamapps\common\My Summer Car\mysummercar_Data\Managed\MSCLoader.dll</HintPath>
+      <HintPath>D:\Programs\Steam\steamapps\common\My Winter Car\mywintercar_Data\Managed\MSCLoader.dll</HintPath>
     </Reference>
     <Reference Include="PlayMaker">
-      <HintPath>G:\Steam\steamapps\common\My Summer Car\mysummercar_Data\Managed\PlayMaker.dll</HintPath>
+      <HintPath>D:\Programs\Steam\steamapps\common\My Winter Car\mywintercar_Data\Managed\PlayMaker.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -50,7 +50,7 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="UnityEngine">
-      <HintPath>G:\Steam\steamapps\common\My Summer Car\mysummercar_Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>D:\Programs\Steam\steamapps\common\My Winter Car\mywintercar_Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -60,14 +60,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Assets\railway_crossing.unity3d" />
+    <EmbeddedResource Include="railway_crossing.unity3d" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup>
-    <PostBuildEvent>echo D | xcopy "$(TargetPath)" "G:\Steam\steamapps\common\My Summer Car\Mods\" /Y /R
-echo D | xcopy "G:\Unity Projects\Railway crossing sign\Assets\AssetBundles\railway_crossing.unity3d" "G:\Steam\steamapps\common\My Summer Car\Mods\Assets\RailRoadCrossing" /Y /R /I</PostBuildEvent>
-  </PropertyGroup>
-  <PropertyGroup>
-    <PreBuildEvent>echo D | xcopy "G:\Unity Projects\Railway crossing sign\Assets\AssetBundles\railway_crossing.unity3d" "$(ProjectDir)\Assets" /Y /R</PreBuildEvent>
-  </PropertyGroup>
 </Project>
