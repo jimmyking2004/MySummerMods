@@ -26,20 +26,19 @@ namespace RailRoadCrossing
 		public override string Name => "rrc";
 		public override string Help => "railroad crossing debug command";
 		private readonly RailRoadCrossing _mod;
-
 		public RailwayCommand(RailRoadCrossing mod)
 		{
 			this._mod = mod;
-        }
-        public override void Run(string[] args)
-        {
-            if (args.Length == 0)
-            {
-                PrintHelp();
+		}
+		public override void Run(string[] args)
+		{
+			if (args.Length == 0)
+			{
+				PrintHelp();
 				return;
-            }
-            try
-            {
+			}
+			try
+			{
 				switch (args[0].ToLower())
 				{
 					case "down":
@@ -47,14 +46,12 @@ namespace RailRoadCrossing
 						foreach (var o in _mod.Signs)
 							o.GetComponent<CrossingBehaviour>().Lower();
 						break;
-
 					case "up":
 					case "u":
 						foreach (var o in _mod.Signs)
 							o.GetComponent<CrossingBehaviour>().Raise();
-                        break;
-
-                    case "go":
+						break;
+					case "go":
 					case "g":
 						if (args.Length < 2 || !int.TryParse(args[1], out int n))
 						{
@@ -68,43 +65,63 @@ namespace RailRoadCrossing
 						}
 						GameObject.Find("PLAYER").transform.position = _mod.SignPos[n];
 						break;
-
 					case "help":
 					case "h":
 						PrintHelp();
 						break;
+					case "repair":
+					case "r":
+						if (RailRoadCrossing.Breakable.GetValue())
+						{
+							int repairedCount = _mod.Signs.Count(o =>
+									o.GetComponent<CrossingBehaviour>().RepairJoint());
+
+							ModConsole.Print($"Repaired {repairedCount} crossing(s)");
+							break;
+						}
+						else
+						{
+							ModConsole.Print("'Breakable barriers' Is not enabled in settings");
+							return;
+						}
 					default:
 						ModConsole.Print($"Unknown command: {args[0]}");
 						PrintHelp();
 						break;
 				}
-            }
-            catch (Exception ex)
-            {
-                ModConsole.Error(ex.ToString());
-            }
-        }
-		private void PrintHelp()
-        {
-            ModConsole.Print("Railroad crossing debug commands\nhelp|h: show this help\ndown|d: lower all barriers\nup|u: raise all barriers\ngo|g (0-5): teleport to specified sign");
+			}
+			catch (Exception ex)
+			{
+				ModConsole.Error(ex.ToString());
+			}
 		}
-    }
-
-    public class RailRoadCrossing : Mod
+		private void PrintHelp()
+		{
+			ModConsole.Print(
+				"Railroad crossing debug commands\n" +
+				"help | h: show this help\n" +
+				"down | d: lower all barriers\n" +
+				"up | u: raise all barriers\n" +
+				"go | g(0 - 5): teleport to specified sign\n" +
+				"repair | r: fix any broken barriers"
+				);
+		}
+	}
+	public class RailRoadCrossing : Mod
 	{
 		public override string ID => "RailRoadCrossing";
 		public override string Name => "Railroad crossing";
 		public override string Author => "Wampa842 / JimmyKing";
-		public override string Version => "2.0.1";
+		public override string Version => GetType().Assembly.GetName().Version.ToString(3); // Get version from AssemblyInfo.cs / self
 		public override Game SupportedGames => Game.MySummerCar | Game.MyWinterCar;
 
-		static SettingsCheckBox Verbose;
-        static SettingsCheckBox ShowTriggers;
+		public static SettingsCheckBox Verbose;
+		public static SettingsCheckBox ShowTriggers;
 
-        static SettingsCheckBox EnableSound;
-        static SettingsCheckBox EnableBarrier;
-		static SettingsCheckBox Breakable;
-        
+		public static SettingsCheckBox EnableSound;
+		public static SettingsCheckBox EnableBarrier;
+		public static SettingsCheckBox Breakable;
+		
 		public GameObject Parent;
 		public GameObject[] Signs;
 		public Vector3[] SignPos => new Vector3[]
@@ -132,16 +149,15 @@ namespace RailRoadCrossing
 			new Vector3(244.109f, 1.0f, -1262.577f)
 		};
 		public Quaternion TriggerRot => Quaternion.Euler(0.0f, 145.57f, 0.0f);
-
 		public RailRoadCrossing()
 		{
 			// Sorry about this
 			CrossingTriggerBehaviour.Mod = this;
 		}
-
 		private void UpdateSettings()
 		{
-			foreach(var o in GameObject.FindObjectsOfType<GameObject>().Where(e => e.GetComponent<CrossingBehaviour>() != null))
+			Breakable.SetVisibility(EnableBarrier.GetValue());
+			foreach (var o in GameObject.FindObjectsOfType<GameObject>().Where(e => e.GetComponent<CrossingBehaviour>() != null))
 			{
 				o.GetComponent<CrossingBehaviour>().UpdateSettings((bool)EnableSound.GetValue(), (bool)EnableBarrier.GetValue(), (bool)Breakable.GetValue());
 			}
@@ -158,26 +174,21 @@ namespace RailRoadCrossing
 		{
 			SetupFunction(Setup.OnLoad, Mod_OnLoad);
 			SetupFunction(Setup.ModSettings, Mod_Settings);
+			SetupFunction(Setup.ModSettingsLoaded, UpdateSettings);
 		}
-
 		private void Mod_Settings()
-        {
+		{
 			// Create settings
-			Verbose = Settings.AddCheckBox("VerboseLogging", "[DEBUG] Verbose logging", false, UpdateDebugSettings);
-            ShowTriggers = Settings.AddCheckBox("ShowTriggers", "[DEBUG] Show triggers", false, UpdateDebugSettings);
-			Settings.AddText("Anything below here won't update during gameplay and will only update during game load so if you made any changes, you have to reload the save");
-			EnableSound = Settings.AddCheckBox("EnableSound", "Enable sounds", true);
-            EnableBarrier = Settings.AddCheckBox("EnableBarrier", "Use barrier", true, EnableBarrierAction);
-			Breakable = Settings.AddCheckBox("BreakableBarrier", "Breakable barriers", true);
-			//Settings.AddButton(this, ApplySettings, "MSCLoader settings are absolute bollocks.");
+			Settings.AddText("These settings can all be changed live in-game, meaning when you toggle an option, its effects are immediate");
+			EnableSound = Settings.AddCheckBox("EnableSound", "Enable sounds", true, UpdateSettings);
+			EnableBarrier = Settings.AddCheckBox("EnableBarrier", "Use barrier", true, UpdateSettings);
+			Breakable = Settings.AddCheckBox("BreakableBarrier", "Breakable barriers", true, UpdateSettings);
+			Settings.AddHeader("DEBUG", true);
+			Settings.AddText("Recommended to not have these on during normal gameplay");
+			Verbose = Settings.AddCheckBox("VerboseLogging", "Verbose logging", false, UpdateDebugSettings);
+			ShowTriggers = Settings.AddCheckBox("ShowTriggers", "Show triggers", false, UpdateDebugSettings);
 		}
-
-		private void EnableBarrierAction()
-        {
-            Breakable.SetVisibility(EnableBarrier.GetValue());
-		}
-
-        private void Mod_OnLoad()
+		private void Mod_OnLoad()
 		{
 			// Hide the originals
 			foreach (var o in GameObject.FindObjectsOfType<GameObject>().Where(e => e.name == "sign_railroad"))
@@ -188,7 +199,7 @@ namespace RailRoadCrossing
 			// Load original
 			AssetBundle ab = LoadAssets.LoadBundle("RailRoadCrossing.railway_crossing.unity3d");
 			GameObject original = ab.LoadAsset<GameObject>("railway_crossing.prefab");
-			original.transform.localScale = new Vector3(1.4f, 1.4f, 1.4f);
+			//original.transform.localScale = new Vector3(1.4f, 1.4f, 1.4f);
 
 			// Parent object
 			Parent = new GameObject();
@@ -251,10 +262,10 @@ namespace RailRoadCrossing
 
 			// Apply settings
 			UpdateSettings();
-            UpdateDebugSettings();
-            
+			UpdateDebugSettings();
+			
 			// Unload assets
-            GameObject.Destroy(original);
+			GameObject.Destroy(original);
 			ab.Unload(false);
 		}
 	}
