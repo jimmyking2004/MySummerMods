@@ -1,4 +1,4 @@
-﻿/*
+/*
 Copyright (C) 2018 Wampa842
 
 This program is free software: you can redistribute it and/or modify
@@ -14,26 +14,20 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using UnityEngine;
 using MSCLoader;
-using HutongGames.PlayMaker;
 
 namespace RailRoadCrossing
 {
 	class CrossingBehaviour : MonoBehaviour
 	{
-		private class PivotBehaviour : MonoBehaviour
+		private class PivotBehaviour : MonoBehaviour // Gets added to the pivot
 		{
-			void OnJointBreak(float force)
+			void OnJointBreak() // Used by the joint
 			{
-				ModConsole.Print($"[RRC] Joint broke on {gameObject.transform.parent.gameObject.name} with {force.ToString("0")} force");
+				ModConsole.Print("[RRC] Joint broke on " + transform.parent.name); // Didnt see a point in force when it was always the same
 			}
 		}
-
 		private enum BarrierStatus { Up, Down, Warning, Rising, Lowering };
 		private BarrierStatus _status;
 		private float _barrierTargetAngle
@@ -51,49 +45,87 @@ namespace RailRoadCrossing
 		private GameObject _pivot;
 		private GameObject _sign;
 
-		private Material _signMaterial;
-		private Material _baseMaterial;
-		private Material _barrierMaterial;
 		private Material _lightRedLMaterial;
 		private Material _lightRedRMaterial;
 		private Material _lightWhiteMaterial;
 		private Material _lightBarrierMaterial;
 
+		private AudioSource[] _bellSounds;
 		private AudioSource _bellLoopSound;
 		private AudioSource _bellSound;
 		private AudioSource _motorSound;
-
+		private struct HingeSettings // Store hinge settings (used for repairing and state change)
+		{
+			public Vector3 axis;
+			public JointSpring spring;
+			public bool useSpring;
+			public JointLimits limits;
+			public bool useLimits;
+			public float breakForce;
+			public float breakTorque;
+			public bool enableCollision;
+		}
+		private HingeSettings _savedSettings;
 		public void Raise()
 		{
 			_status = BarrierStatus.Rising;
 		}
-
 		public void Lower()
 		{
 			_status = BarrierStatus.Warning;
 			_timer = 0.0f;
 		}
+		public bool RepairJoint()
+		{
+			// Only repair when theres no hinge
+			if (_pivot.GetComponent<HingeJoint>() != null)
+			{
+				return false;
+			}
 
-		public void UpdateSettings(bool sound, bool barrier, bool breakable)
+			// Cancel any velocity
+			Rigidbody rb = _barrier.GetComponent<Rigidbody>();
+			rb.velocity = Vector3.zero;
+			rb.angularVelocity = Vector3.zero;
+
+			// Reset / set barrier position and rotation
+			_barrier.transform.position = _pivot.transform.position;
+			_barrier.transform.rotation = _pivot.transform.rotation * Quaternion.Euler(-90f, 0f, 0f);
+
+			// Create new hinge with saved settings
+			HingeJoint hinge = _pivot.AddComponent<HingeJoint>();
+			hinge.axis = _savedSettings.axis;
+			hinge.spring = _savedSettings.spring;
+			hinge.useSpring = _savedSettings.useSpring;
+			hinge.limits = _savedSettings.limits;
+			hinge.useLimits = _savedSettings.useLimits;
+			hinge.breakForce = _savedSettings.breakForce;
+			hinge.breakTorque = _savedSettings.breakTorque;
+			hinge.enableCollision = _savedSettings.enableCollision;
+			hinge.connectedBody = _barrier.GetComponent<Rigidbody>();
+
+			return true;
+		}
+		public void UpdateSettings(bool sound, bool barrier, bool breakable) // From RailRoadCrossing.cs
 		{
 			_soundEnabled = sound;
 			_barrier.SetActive(barrier);
-			if (breakable)
+			if (breakable && barrier)
 			{
+				RepairJoint(); // Make the joint
 				_barrier.GetComponent<Rigidbody>().isKinematic = false;
 				_barrier.transform.parent = gameObject.transform;
-				_pivot.GetComponent<Joint>().breakForce = 5000.0f;
 			}
 			else
 			{
 				_barrier.GetComponent<Rigidbody>().isKinematic = true;
 				_barrier.transform.parent = _pivot.transform;
-				_barrier.transform.localPosition = new Vector3();
-				_pivot.GetComponent<Joint>().breakForce = float.PositiveInfinity;
+				_barrier.transform.position = _pivot.transform.position;
+				_barrier.transform.rotation = _pivot.transform.rotation * Quaternion.Euler(-90f, 0f, 0f);
+				Destroy(_pivot.GetComponent<HingeJoint>()); // Destroy the Joint (not needed)
 			}
 		}
-
-		void Awake()
+		void Awake() // Used by Unity when the Crossing is first made
 		{
 			// Find components
 			_barrier = gameObject.transform.FindChild("railway_barrier").gameObject;
@@ -101,55 +133,38 @@ namespace RailRoadCrossing
 			_pivot = gameObject.transform.FindChild("barrier_pivot").gameObject;
 			_pivot.AddComponent<PivotBehaviour>();
 
-			// Find textures
-			Texture baseTex = gameObject.GetComponent<Renderer>().material.mainTexture;
-			Texture signTex = _sign.GetComponent<Renderer>().material.mainTexture;
-			Texture barrTex = _barrier.GetComponent<Renderer>().material.mainTexture;
-			Texture barrEmissiveTex = _barrier.transform.FindChild("barrier_light_1").gameObject.GetComponent<Renderer>().material.GetTexture("_EmissionMap");
-			Texture signEmissiveTex = _sign.transform.FindChild("railway_sign_white").gameObject.GetComponent<Renderer>().material.GetTexture("_EmissionMap");
+			// There now no need to create materials when we already have them
 
-			// Create and assign new materials
-			_baseMaterial = new Material(Shader.Find("Standard"));
-			_baseMaterial.mainTexture = baseTex;
-			gameObject.GetComponent<Renderer>().material = _baseMaterial;
+			// Get references from existing materials
+			_lightRedLMaterial = _sign.transform.FindChild("railway_sign_left").gameObject.GetComponent<Renderer>().material;
+			_lightRedRMaterial = _sign.transform.FindChild("railway_sign_right").gameObject.GetComponent<Renderer>().material;
+			_lightWhiteMaterial = _sign.transform.FindChild("railway_sign_white").gameObject.GetComponent<Renderer>().material;
+			_lightBarrierMaterial = _barrier.transform.FindChild("barrier_light_1").gameObject.GetComponent<Renderer>().material;
 
-			_signMaterial = new Material(Shader.Find("Standard"));
-			_signMaterial.mainTexture = signTex;
-			_sign.GetComponent<Renderer>().material = _signMaterial;
-
-			_barrierMaterial = new Material(Shader.Find("Standard"));
-			_barrierMaterial.mainTexture = barrTex;
-			_barrier.GetComponent<Renderer>().material = _barrierMaterial;
-
-			// Assign emissive materials
-			_lightWhiteMaterial = Material.Instantiate<Material>(_signMaterial);
-			_lightWhiteMaterial.SetTexture("_EmissionMap", signEmissiveTex);
-			_lightWhiteMaterial.SetColor("_EmissionColor", Color.white);
-			_lightWhiteMaterial.SetFloat("_EmissionScaleUI", 10.0f);
-
-			_lightRedLMaterial = Material.Instantiate<Material>(_lightWhiteMaterial);
-			_lightRedLMaterial.SetColor("_EmissionColor", Color.red);
-			_lightRedLMaterial.SetFloat("_EmissionScaleUI", 10.0f);
-
-			_lightRedRMaterial = Material.Instantiate<Material>(_lightRedLMaterial);
-			_lightBarrierMaterial = Material.Instantiate<Material>(_barrierMaterial);
-			_lightBarrierMaterial.SetTexture("_EmissionMap", barrEmissiveTex);
-			_lightBarrierMaterial.SetColor("_EmissionColor", Color.red);
-			_lightBarrierMaterial.SetFloat("_EmissionScaleUI", 10.0f);
-
-			_sign.transform.FindChild("railway_sign_left").gameObject.GetComponent<Renderer>().material = _lightRedLMaterial;
-			_sign.transform.FindChild("railway_sign_right").gameObject.GetComponent<Renderer>().material = _lightRedRMaterial;
-			_sign.transform.FindChild("railway_sign_white").gameObject.GetComponent<Renderer>().material = _lightWhiteMaterial;
-			_barrier.transform.FindChild("barrier_light_1").gameObject.GetComponent<Renderer>().material = _lightBarrierMaterial;
+			// Assign the same emissive trigger for barrier light 2
 			_barrier.transform.FindChild("barrier_light_2").gameObject.GetComponent<Renderer>().material = _lightBarrierMaterial;
 
+			// Store the hinge data from the model
+			var hinge = _pivot.GetComponent<HingeJoint>();
+			_savedSettings = new HingeSettings
+			{
+				axis = hinge.axis,
+				spring = hinge.spring,
+				useSpring = hinge.useSpring,
+				limits = hinge.limits,
+				useLimits = hinge.useLimits,
+				breakForce = hinge.breakForce,
+				breakTorque = hinge.breakTorque,
+				enableCollision = hinge.enableCollision
+			};
+
 			// Find audio sources
-			_bellLoopSound = _sign.transform.FindChild("bell_loop_sound").gameObject.GetComponent<AudioSource>();
-			_bellSound = _sign.transform.FindChild("bell_sound").gameObject.GetComponent<AudioSource>();
+			_bellSounds = _sign.transform.FindChild("bell_sounds").GetComponents<AudioSource>(); // Single source rather than 2
+			_bellSound = _bellSounds[0];
+			_bellLoopSound = _bellSounds[1];
 			_motorSound = transform.FindChild("motor_sound").gameObject.GetComponent<AudioSource>();
 		}
-
-		void Update()
+		void Update() // Unity update function
 		{
 			// Movement
 			if (_status == BarrierStatus.Warning)
