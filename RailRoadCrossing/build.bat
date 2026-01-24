@@ -1,6 +1,6 @@
 @echo off
 
-set src="%cd%\source"
+set src="%cd%\Source Files"
 
 :: ===============================
 :: GET OR MAKE AND GET GAME_PATH
@@ -16,7 +16,7 @@ if not exist %src%\Directory.Build.props (
     )
 )
 
-:: Change working directory to \source
+:: Change working directory to \Source Files
 cd %src%
 
 for /f "usebackq delims=" %%G in (`powershell -NoProfile ^
@@ -127,3 +127,4 @@ if errorlevel 1 (
 echo.
 echo BUILD SUCCESS
 pause
+
