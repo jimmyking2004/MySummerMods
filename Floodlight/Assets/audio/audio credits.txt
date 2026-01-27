@@ -1,3 +1,0 @@
-- switch_on.ogg, switch_off.ogg:
-	Glasses^2 https://www.youtube.com/channel/UCPzQYrICTlNDx1QFZVQ8KTA
-	CC-BY
